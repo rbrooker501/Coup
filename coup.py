@@ -9,9 +9,9 @@ import time
 
 HAND_SIZE = 2
 NUMBER_CARDS = 3
-STARTING_COINS = 2
+STARTING_COINS = 9
 INQUISITOR = False
-MOVES = ['income', 'foreign aid', 'tax', 'exchange', 'steal', 'assassinate']
+MOVES = ['income', 'foreign aid', 'tax', 'exchange', 'steal', 'assassinate', 'coup']
 
 ASSASSINATE_AMOUNT = 3
 COUP_AMOUNT = 7
@@ -322,15 +322,25 @@ if __name__ == "__main__":
           print(f'You have over {MUST_COUP} coins. You must coup.')
           action = 'coup'
         # Ask a player for their action.
-        action = input(f'What would you like to do, {player.name}? ').lower()
-        while action not in MOVES:
-          if action == 'help':
-            print('Valid moves:\n')
-            for j in MOVES:
-              print(j)
-          else:
-            print('Invalid action! Please select a valid action.')
+        else:
           action = input(f'What would you like to do, {player.name}? ').lower()
+          while action not in MOVES:
+            if action == 'help':
+              print('Valid moves:\n')
+              for j in MOVES:
+                print(j)
+              
+              print('Cards:')
+              print('Ambassador: Exhanges cards with court deck. Blocks stealing')
+              print(f'Assassin: Can pay {ASSASSINATE_AMOUNT} coins to assassinate another player')
+              print(f'Captain: Can steal {STEAL_AMOUNT} coins from another player. Blocks stealing')
+              print('Contessa: Blocks assassination')
+              print('Duke: Can take tax. Blocks foreign aid.')
+
+              print(f'If you have over {MUST_COUP} coins, you must coup')
+            else:
+              print('Invalid action! Please select a valid action.')
+            action = input(f'What would you like to do, {player.name}? ').lower()
 
         match action:
           case 'income':
