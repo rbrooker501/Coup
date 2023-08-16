@@ -16,6 +16,7 @@ MOVES = ['income', 'foreign aid', 'tax', 'exchange', 'steal', 'assassinate']
 ASSASSINATE_AMOUNT = 3
 COUP_AMOUNT = 7
 MUST_COUP = 10
+STEAL_AMOUNT = 2
 
 class Player:
   def __init__(self, deck, coins, name):
@@ -72,28 +73,44 @@ class Player:
 
 class Game:
   def __init__(self, n_players):
+    """Initialises an instance of the Game class.
+    Arguments:
+      `n_players` (int) - The number of players in the game"""
     self.players = n_players
     self.deck = self.generate_deck()
 
   def generate_deck(self):
+    """Generates the deck to use.
+    Returns:
+      `deck` (list) - The deck to use in the game as a list
+    """
     deck = []
     if not INQUISITOR:
       cards = ['duke', 'ambassador', 'captain', 'assassin', 'contessa']
     else:
       cards = ['duke', 'inquisitor', 'captain', 'assassin', 'contessa']
     
-    for i in cards:
-      for j in range(NUMBER_CARDS):
-        deck.append(i)
+    for card in cards:
+      for _ in range(NUMBER_CARDS):
+        deck.append(card)
     
     random.shuffle(deck)
     return deck
 
 def exchange(hand, deck):
+  """Picks up 2 cards from the court deck and returns 2.
+  The action of the Ambassador.
+  Arguments:
+    `hand` (list) - The player's hand
+    `deck` (list) - The deck to draw from
+  Returns:
+    `(kept, deck)` (list tuple) - A tuple in the format (kept cards, deck)
+  """
   cards = []
   for card in hand:
     cards.append(card)
   kept = []
+  # Take 2 cards from the deck
   for i in range(2):
     cards.append(deck[i])
   del deck[0]
@@ -105,6 +122,7 @@ def exchange(hand, deck):
     kept.append(cards[keep])
     del cards[keep]
 
+  # Put the remaining cards back in the deck and shuffle
   for l in cards:
     deck.append(l)
   random.shuffle(deck)
@@ -113,14 +131,23 @@ def exchange(hand, deck):
   return (kept, deck)
 
 def steal(player, target):
-  if target.coins < 2:
+  """Steals a set amount of coins from another user, dictated by a constant.
+  The action of the Captain
+  Arguments:
+    `player` (Player object) - The thief
+    `target` (Player object) - The player to steal from
+  """
+  if target.coins < STEAL_AMOUNT:
     player.coins += target.coins
     target.coins = 0
   else:
-    player.coins += 2
-    target.coins -= 2
+    player.coins += STEAL_AMOUNT
+    target.coins -= STEAL_AMOUNT
   
 def lose_life(player):
+  """Causes a player to lose a life
+  Arguments:
+    `player` (Player object) - The player to kill"""
   for i, card in enumerate(player.hand):
     print(f"{i}: {card} ")
 
@@ -133,6 +160,12 @@ def lose_life(player):
   player.displayed_cards.append(discarded)
 
 def block(player, other_player, action):
+  """Asks a user if they want to block another player's action
+  Arguments:
+    `player` (Player object) - The player taking an action
+    `other_player` (Player object) - The player who may block the action
+    `action` (string) - The action being blocked
+  """
   print(f'{player.name} is attempting to {action}.')
   utils.cls()
   print(f'Your hand: {other_player.hand}')
@@ -143,6 +176,15 @@ def block(player, other_player, action):
     return False
 
 def challenge_result(player, other_player, result, card):
+  """Takes the result of a challenge, prints a message, and deducts a life accordingly.
+  Arguments:
+    `player` (Player object) - The player challenging
+    `other_player` (Player object) - The player being challenged
+    `result` (bool) - The result of a challenge
+    `card` (string) - The card being challenged
+  Returns:
+    `result` (bool) - The result of the challenge
+  """
   if card == 'ambassador':
     article = 'an'
   else:
@@ -255,14 +297,18 @@ if __name__ == "__main__":
   while players > 6 or players < 2:
     print("Error: You cannot play with more than 6 or less than 2 players!")
     players = int(input('Enter a number of players (up to 6): '))
+  
   game = Game(players)
+  # Generates players
   for i in range(players):
     name = input('Enter your name: ')
     player = Player(game.deck, STARTING_COINS, name)
     players_list.append(player)
     utils.cls()
   alive_players = players_list
+  # Loop forever
   while True:
+    # Iterate through all alive players
     for i in range(len(alive_players)):
       player = alive_players.pop(0)
       if player.is_alive():
@@ -272,8 +318,10 @@ if __name__ == "__main__":
         for person in players_list:
           print(f'Player: {person.name}, Hand: {person.displayed_cards}, Coins: {person.coins}')
         
-        if player.coins >= COUP_AMOUNT:
+        if player.coins >= MUST_COUP:
+          print(f'You have over {MUST_COUP} coins. You must coup.')
           action = 'coup'
+        # Ask a player for their action.
         action = input(f'What would you like to do, {player.name}? ').lower()
         while action not in MOVES:
           if action == 'help':
@@ -284,59 +332,60 @@ if __name__ == "__main__":
             print('Invalid action! Please select a valid action.')
           action = input(f'What would you like to do, {player.name}? ').lower()
 
-        if action == 'income':
-          player.coins += 1
-        elif action == 'foreign aid':
-          for other_player in alive_players:
-            if block(player, other_player, action):
-              utils.cls()
-              # Only one person gets to challenge this
-              challenge(player, other_player, action, 'duke')
-              break
-          else:
-            player.coins += 2
-        elif action == 'tax':
-          if not challenge_ask(player, alive_players, action, 'duke'):
-            player.coins += 3
-        elif action == 'exchange':
-          if not challenge_ask(player, alive_players, action, 'ambassador'):
-            hand, deck = exchange(player.hand, game.deck)
-            player.hand = hand
-            game.deck = deck     
-        elif action == 'steal':
-          for j in range(len(alive_players)):
-            print(f"{j}: {alive_players[j].name}")
-          target = int(input('Who would you like to steal from? (enter an index) '))
-          if block(player, alive_players[target], action):
-            card = input('Which card would you like to block with (ambassador or captain)? ').lower()
-            challenge(player, alive_players[target], 'block', card)
-          else:
-            if not challenge(alive_players[target], player, action, 'captain'):
-              steal(player, alive_players[target])
-        elif action == 'assassinate':
-          if player.coins > ASSASSINATE_AMOUNT:
-            for j in range(len(alive_players)):
-              print(f"{j}: {alive_players[j].name}")
-            target = int(input('Who would you like to assassinate? (enter an index) '))
-            player.coins -= ASSASSINATE_AMOUNT
-            if block(player, alive_players[target], action):
-              challenged = challenge(player, alive_players[target], action, 'contessa')
-              if challenged is not None:
-                if challenged:
-                  lose_life(alive_players[target])
+        match action:
+          case 'income':
+            player.coins += 1
+          case 'foreign aid':
+            for other_player in alive_players:
+              if block(player, other_player, action):
+                utils.cls()
+                # Only one person gets to challenge this
+                challenge(player, other_player, action, 'duke')
+                break
             else:
-              challenge(alive_players[target], player, action, 'assassin')
-          else:
-            print('Sorry, you do not have enough coins to assassinate anybody!')
-        elif action == 'coup':
-          if player.coins > COUP_AMOUNT:
+              player.coins += 2
+          case 'tax':
+            if not challenge_ask(player, alive_players, action, 'duke'):
+              player.coins += 3
+          case 'exchange':
+            if not challenge_ask(player, alive_players, action, 'ambassador'):
+              hand, deck = exchange(player.hand, game.deck)
+              player.hand = hand
+              game.deck = deck     
+          case 'steal':
             for j in range(len(alive_players)):
               print(f"{j}: {alive_players[j].name}")
-            target = int(input('Who would you like to coup? (enter an index) '))
-            player.coins -= COUP_AMOUNT
-            lose_life(alive_players[target])
-          else:
-            print('Sorry, you do not have enough coins to coup anybody!')
+            target = int(input('Who would you like to steal from? (enter an index) '))
+            if block(player, alive_players[target], action):
+              card = input('Which card would you like to block with (ambassador or captain)? ').lower()
+              challenge(player, alive_players[target], 'block', card)
+            else:
+              if not challenge(alive_players[target], player, action, 'captain'):
+                steal(player, alive_players[target])
+          case 'assassinate':
+            if player.coins > ASSASSINATE_AMOUNT:
+              for j in range(len(alive_players)):
+                print(f"{j}: {alive_players[j].name}")
+              target = int(input('Who would you like to assassinate? (enter an index) '))
+              player.coins -= ASSASSINATE_AMOUNT
+              if block(player, alive_players[target], action):
+                challenged = challenge(player, alive_players[target], action, 'contessa')
+                if challenged is not None:
+                  if challenged:
+                    lose_life(alive_players[target])
+              else:
+                challenge(alive_players[target], player, action, 'assassin')
+            else:
+              print('Sorry, you do not have enough coins to assassinate anybody!')
+          case 'coup':
+            if player.coins > COUP_AMOUNT:
+              for j in range(len(alive_players)):
+                print(f"{j}: {alive_players[j].name}")
+              target = int(input('Who would you like to coup? (enter an index) '))
+              player.coins -= COUP_AMOUNT
+              lose_life(alive_players[target])
+            else:
+              print('Sorry, you do not have enough coins to coup anybody!')
       else:
         del alive_players[0]
       players_list.append(player)
